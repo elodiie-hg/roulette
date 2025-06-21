@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Roue des Récompenses</title>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background: #f3d792;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      position: relative;
+    }
+
+    .wheel-wrapper {
+      position: relative;
+      width: 400px;
+      height: 400px;
+    }
+
+    .arrow {
+      width: 0;
+      height: 0;
+      border-top: 20px solid transparent;
+      border-bottom: 20px solid transparent;
+      border-right: 30px solid red; /* flèche vers la gauche */
+      position: absolute;
+      top: calc(50% - 20px); /* centrée verticalement */
+      right: -30px; /* positionnée juste à droite du canvas */
+      z-index: 10;
+    }
+
+    canvas {
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-container {
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 18px;
+      border: none;
+      background-color: #ff5722;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.3s;
+    }
+
+    button:hover:enabled {
+      background-color: #e64a19;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Styles modale */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 20px 30px;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      font-size: 18px;
+      color: #333;
+    }
+
+    .modal p {
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .modal button {
+      width: 100%;
+      font-weight: 600;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wheel-wrapper">
+    <div class="arrow"></div>
+    <canvas id="wheelCanvas" width="400" height="400"></canvas>
+  </div>
+
+  <div class="btn-container">
+    <button id="spinBtn">Lancer la roue</button>
+  </div>
+
+  <!-- Modale pour instructions -->
+  <div id="modal" class="modal-overlay">
+    <div class="modal">
+      <p><strong>Suivez les étapes :</strong></p>
+      <p>1) Laissez un avis sur Google<br>2) Revenez sur cette page<br>3) Faites tourner la roue.</p>
+      <button id="googleReviewBtn">Notez sur Google</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const spinButton = document.getElementById("spinBtn");
+
+    const modal = document.getElementById("modal");
+    const googleReviewBtn = document.getElementById("googleReviewBtn");
+
+    const googleReviewURL = "https://www.google.com/search?sca_esv=1f1865b5582e1c86&sxsrf=AE3TifNfuBFBafy4G-lZBEFBJYT5V77S0Q:1750530041345&si=AMgyJEuzsz2NflaaWzrzdpjxXXRaJ2hfdMsbe_mSWso6src8swpHEgLW2mTt5c4C3Ig-MZcqeEzJSsgtMSnVdHq9cmEi7UIAlAzpH_PHc8cSxH4Zq44VKzemGVlVWW6mCSQaB7hi8Xjk&q=Hokiko+Avis&sa=X&ved=2ahUKEwi0yaHKkIOOAxW2VaQEHeEvIrUQ0bkNegQIKRAE&biw=1486&bih=778&dpr=1.5";
+
+    const segments = ['-10%', '-5%', 'Goodies', 'Une boisson', 'Un café', 'Bon d\'achat 5€', 'À la prochaine'];
+    const colors = ['#FFB300', '#FF8A65', '#9575CD', '#4DB6AC', '#81C784', '#BA68C8', '#F06292'];
+    const weights = [1, 3, 1, 4, 4, 1, 3];
+    const spinDuration = 5000; // durée du spin en ms
+    let startAngle = 0;
+
+    function drawWheel() {
+      const arc = (2 * Math.PI) / segments.length;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < segments.length; i++) {
+        const angle = startAngle + i * arc;
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.beginPath();
+        ctx.moveTo(200, 200);
+        ctx.arc(200, 200, 200, angle, angle + arc);
+        ctx.fill();
+
+        // Texte
+        ctx.save();
+        ctx.translate(200, 200);
+        ctx.rotate(angle + arc / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#fff";
+        ctx.font = "16px Quicksand";
+        ctx.fillText(segments[i], 180, 10);
+        ctx.restore();
+      }
+    }
+
+    function getRandomSegment() {
+      const totalWeight = weights.reduce((a, b) => a + b);
+      let rand = Math.floor(Math.random() * totalWeight);
+      for (let i = 0; i < weights.length; i++) {
+        rand -= weights[i];
+        if (rand < 0) return i;
+      }
+      return 0;
+    }
+
+    function spinWheel() {
+      const selectedIndex = getRandomSegment();
+      const arc = 360 / segments.length;
+      const stopAngle = 360 * 5 + (360 - (selectedIndex * arc + arc / 2));
+      canvas.style.transition = `transform ${spinDuration / 1000}s ease-out`;
+      canvas.style.transform = `rotate(${stopAngle}deg)`;
+
+      setTimeout(() => {
+        alert("🎉 Résultat : " + segments[selectedIndex]);
+      }, spinDuration);
+    }
+
+    function handleSpinClick() {
+      const hasReviewed = sessionStorage.getItem("hasReviewed");
+      const hasSpun = sessionStorage.getItem("hasSpun");
+
+      if (!hasReviewed) {
+        // Affiche la modale avec les instructions
+        modal.style.display = "flex";
+        return;
+      }
+
+      if (hasSpun) {
+        alert("Vous avez déjà lancé la roue une fois.");
+        return;
+      }
+
+      spinButton.disabled = true;
+      sessionStorage.setItem("hasSpun", "true");
+
+      canvas.style.transition = "none";
+      canvas.style.transform = "rotate(0deg)";
+      setTimeout(spinWheel, 50);
+    }
+
+    // Bouton de la modale pour aller sur Google avis
+    googleReviewBtn.addEventListener("click", () => {
+      window.open(googleReviewURL, "_blank");
+      // On considère que l'utilisateur va laisser un avis,
+      // on met le flag hasReviewed pour éviter de réafficher la modale
+      sessionStorage.setItem("hasReviewed", "true");
+      modal.style.display = "none";
+    });
+
+    // Désactive le bouton si déjà lancé dans la session
+    window.onload = () => {
+      if (sessionStorage.getItem("hasSpun")) {
+        spinButton.disabled = true;
+      }
+    };
+
+    spinButton.addEventListener("click", handleSpinClick);
+
+    drawWheel();
+  </script>
+</body>
+</html>
